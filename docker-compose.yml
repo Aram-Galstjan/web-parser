@@ -1,0 +1,8 @@
+services:
+  parser:
+    build: .
+    env_file: .env
+    volumes:
+      - ./apartments.db:/app/apartments.db
+      - ./parser.log:/app/parser.log
+      - ./housing-parser/proxies.txt:/app/housing-parser/proxies.txt:ro
