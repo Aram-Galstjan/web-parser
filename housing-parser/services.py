@@ -26,7 +26,7 @@ USER_AGENTS = [
     "Chrome/123.0.0.0 Safari/537.36 Edg/123.0.0.0",
 ]
 
-BLOCK_MARKERS = ("captcha", "access denied", "unusual traffic", "robot")
+BLOCK_MARKERS = ("captcha", "access denied", "unusual traffic", "are you a robot")
 
 
 # Прокси
@@ -65,9 +65,9 @@ class ProxyRotator(IProxyProvider):
             log.warning("Прокси исключён: %s (живых: %d)", url, len(self._all) - len(self._bad))
 
 
-# --------------------------------------------------------------------------- #
+
 # Загрузка страниц
-# --------------------------------------------------------------------------- #
+
 class HttpFetcher(IFetcher):
     def __init__(
         self,
@@ -109,8 +109,9 @@ class HttpFetcher(IFetcher):
                     url, headers=self._headers(), proxies=proxy, timeout=self.timeout
                 )
                 last_html = resp.text
-                lowered = resp.text[:5000].lower()
-                blocked = resp.status_code in (403, 429) or any(m in lowered for m in BLOCK_MARKERS)
+                lowered = resp.text.lower()
+                has_ads = "aditem" in lowered or "ad-listitem" in lowered
+                blocked = resp.status_code in (403, 429) or (not has_ads and any(m in lowered for m in BLOCK_MARKERS))
 
                 if resp.status_code == 200 and not blocked:
                     time.sleep(random.uniform(*self.delay_range))  # вежливая пауза
@@ -138,7 +139,7 @@ class KleinanzeigenParser(IParser):
 
     def parse(self, html: str) -> list[Listing]:
         soup = BeautifulSoup(html, "lxml")
-        items = soup.select("article.aditem, li.ad-listitem article")
+        items = soup.select("article[data-adid]")
         result: list[Listing] = []
 
         for art in items:
@@ -153,17 +154,18 @@ class KleinanzeigenParser(IParser):
             if not ext_id:
                 continue
 
-            title_el = art.select_one(".aditem-main--middle--title, h2 a, a.ellipsis")
-            price_el = art.select_one(
-                ".aditem-main--middle--price-shipping--price, p.aditem-main--middle--price"
-            )
-            addr_el = art.select_one(".aditem-main--top--left")
-
-            title = title_el.get_text(" ", strip=True) if title_el else ""
+            title = self._extract_title(art)
             if not title:
                 continue
-            price = price_el.get_text(" ", strip=True) if price_el else ""
-            address = addr_el.get_text(" ", strip=True) if addr_el else ""
+
+            for tag in art.select("script, style"):
+                tag.decompose()
+            texts = [re.sub(r"\s+", " ", s) for s in art.stripped_strings]
+
+            price = next(
+                (t for t in texts if re.fullmatch(r"\d[\d.,]*\s*€(\s*VB)?", t)), ""
+            )
+            address = next((t for t in texts if re.match(r"\d{5}\s+\S", t)), "")
 
             result.append(
                 Listing(
@@ -171,11 +173,25 @@ class KleinanzeigenParser(IParser):
                     title=title,
                     price=price,
                     price_eur=parse_price_eur(price),
-                    address=re.sub(r"\s+", " ", address),
+                    address=address,
                     url=urljoin(self.BASE, href),
                 )
             )
         return result
+
+    @staticmethod
+    def _extract_title(art) -> str:
+        h2 = art.select_one("h2")
+        if h2 and h2.get_text(strip=True):
+            return h2.get_text(" ", strip=True)
+        for a in art.select("a[href*='/s-anzeige/']"):
+            text = a.get_text(" ", strip=True)
+            if text:
+                return text
+        img = art.select_one("img[alt]")
+        if img:
+            return re.sub(r"\s*Vorschау$", "", img["alt"]).strip()
+        return ""
 
     @staticmethod
     def _id_from_url(href: str) -> Optional[str]:
@@ -212,6 +228,19 @@ class ParserService:
             return f"{self.base_url}/{self.search_path}/{self.category_code}"
         return f"{self.base_url}/{self.search_path}/seite:{page}/{self.category_code}"
 
+    def _diagnose(self, html: str) -> None:
+        (Path(__file__).resolve().parent / "debug_page.html").write_text(html, encoding="utf-8")
+        soup = BeautifulSoup(html, "lxml")
+        log.warning("title: %s | size: %d",
+                    soup.title.get_text(strip=True) if soup.title else None, len(html))
+        for sel in ["article.aditem", "article", "li.ad-listitem",
+                    "[data-adid]", "a[href*='/s-anzeige/']"]:
+            log.warning("%s -> %d", sel, len(soup.select(sel)))
+        a = soup.select_one("[data-adid]") or soup.select_one("a[href*='/s-anzeige/']")
+        if a:
+            block = a.find_parent("article") or a
+            log.warning("пример блока: %s", str(block)[:2000])
+
     def run(self) -> int:
         seen: set[str] = set()
         collected = 0
@@ -227,6 +256,8 @@ class ParserService:
 
             listings = [l for l in self.parser.parse(html) if l.external_id not in seen]
             if not listings:
+                if page == 1:
+                    self._diagnose(html)
                 log.info("Новых объявлений на странице нет — конец выдачи")
                 break
 
