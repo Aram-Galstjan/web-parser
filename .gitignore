@@ -1,12 +1,6 @@
-# Виртуальное окружение
-venv/
-__pycache__/
-
-# Секреты и настройки
 .env
-
-# Базы данных для тестов
 *.db
-
-# Логи
-*.log
+parser.log
+debug_page.html
+__pycache__/
+.venv/
