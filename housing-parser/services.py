@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import logging
 import random
@@ -29,10 +29,10 @@ USER_AGENTS = [
 BLOCK_MARKERS = ("captcha", "access denied", "unusual traffic", "are you a robot")
 
 
-# Прокси
+# ÐŸÑ€Ð¾ÐºÑÐ¸
 
 class ProxyRotator(IProxyProvider):
-    """Round-robin ротация. Формат строки: http://user:pass@host:port"""
+    """Round-robin Ñ€Ð¾Ñ‚Ð°Ñ†Ð¸Ñ. Ð¤Ð¾Ñ€Ð¼Ð°Ñ‚ ÑÑ‚Ñ€Ð¾ÐºÐ¸: http://user:pass@host:port"""
 
     def __init__(self, proxies: list[str]):
         self._all = list(proxies)
@@ -62,11 +62,11 @@ class ProxyRotator(IProxyProvider):
         if proxy:
             url = proxy.get("https")
             self._bad.add(url)
-            log.warning("Прокси исключён: %s (живых: %d)", url, len(self._all) - len(self._bad))
+            log.warning("ÐŸÑ€Ð¾ÐºÑÐ¸ Ð¸ÑÐºÐ»ÑŽÑ‡Ñ‘Ð½: %s (Ð¶Ð¸Ð²Ñ‹Ñ…: %d)", url, len(self._all) - len(self._bad))
 
 
 
-# Загрузка страниц
+# Ð—Ð°Ð³Ñ€ÑƒÐ·ÐºÐ° ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†
 
 class HttpFetcher(IFetcher):
     def __init__(
@@ -96,7 +96,7 @@ class HttpFetcher(IFetcher):
         if self.debug_path:
             try:
                 self.debug_path.write_text(html, encoding="utf-8")
-                log.info("HTML сохранён для отладки: %s", self.debug_path)
+                log.info("HTML ÑÐ¾Ñ…Ñ€Ð°Ð½Ñ‘Ð½ Ð´Ð»Ñ Ð¾Ñ‚Ð»Ð°Ð´ÐºÐ¸: %s", self.debug_path)
             except OSError:
                 pass
 
@@ -114,17 +114,17 @@ class HttpFetcher(IFetcher):
                 blocked = resp.status_code in (403, 429) or (not has_ads and any(m in lowered for m in BLOCK_MARKERS))
 
                 if resp.status_code == 200 and not blocked:
-                    time.sleep(random.uniform(*self.delay_range))  # вежливая пауза
+                    time.sleep(random.uniform(*self.delay_range))  # Ð²ÐµÐ¶Ð»Ð¸Ð²Ð°Ñ Ð¿Ð°ÑƒÐ·Ð°
                     return resp.text
 
-                log.warning("Попытка %d/%d: HTTP %s / блокировка (%s)",
+                log.warning("ÐŸÐ¾Ð¿Ñ‹Ñ‚ÐºÐ° %d/%d: HTTP %s / Ð±Ð»Ð¾ÐºÐ¸Ñ€Ð¾Ð²ÐºÐ° (%s)",
                             attempt, self.retries, resp.status_code, url)
                 self.proxies.mark_bad(proxy)
             except requests.RequestException as exc:
-                log.warning("Попытка %d/%d: ошибка сети: %s", attempt, self.retries, exc)
+                log.warning("ÐŸÐ¾Ð¿Ñ‹Ñ‚ÐºÐ° %d/%d: Ð¾ÑˆÐ¸Ð±ÐºÐ° ÑÐµÑ‚Ð¸: %s", attempt, self.retries, exc)
                 self.proxies.mark_bad(proxy)
 
-            time.sleep(min(2 ** attempt, 30) + random.random())  # экспоненциальный backoff
+            time.sleep(min(2 ** attempt, 30) + random.random())  # ÑÐºÑÐ¿Ð¾Ð½ÐµÐ½Ñ†Ð¸Ð°Ð»ÑŒÐ½Ñ‹Ð¹ backoff
 
         if last_html:
             self._dump_debug(last_html)
@@ -132,7 +132,7 @@ class HttpFetcher(IFetcher):
 
 
 
-# Парсер HTML
+# ÐŸÐ°Ñ€ÑÐµÑ€ HTML
 
 class KleinanzeigenParser(IParser):
     BASE = "https://www.kleinanzeigen.de"
@@ -163,7 +163,7 @@ class KleinanzeigenParser(IParser):
             texts = [re.sub(r"\s+", " ", s) for s in art.stripped_strings]
 
             price = next(
-                (t for t in texts if re.fullmatch(r"\d[\d.,]*\s*€(\s*VB)?", t)), ""
+                (t for t in texts if re.fullmatch(r"\d[\d.,]*\s*â‚¬(\s*VB)?", t)), ""
             )
             address = next((t for t in texts if re.match(r"\d{5}\s+\S", t)), "")
 
@@ -190,7 +190,7 @@ class KleinanzeigenParser(IParser):
                 return text
         img = art.select_one("img[alt]")
         if img:
-            return re.sub(r"\s*Vorschау$", "", img["alt"]).strip()
+            return re.sub(r"\s*VorschÐ°Ñƒ$", "", img["alt"]).strip()
         return ""
 
     @staticmethod
@@ -200,7 +200,7 @@ class KleinanzeigenParser(IParser):
 
 
 
-# Оркестрация
+# ÐžÑ€ÐºÐµÑÑ‚Ñ€Ð°Ñ†Ð¸Ñ
 
 class ParserService:
     def __init__(
@@ -239,7 +239,7 @@ class ParserService:
         a = soup.select_one("[data-adid]") or soup.select_one("a[href*='/s-anzeige/']")
         if a:
             block = a.find_parent("article") or a
-            log.warning("пример блока: %s", str(block)[:2000])
+            log.warning("Ð¿Ñ€Ð¸Ð¼ÐµÑ€ Ð±Ð»Ð¾ÐºÐ°: %s", str(block)[:2000])
 
     def run(self) -> int:
         seen: set[str] = set()
@@ -248,28 +248,28 @@ class ParserService:
 
         for page in range(1, self.max_pages + 1):
             url = self.page_url(page)
-            log.info("Страница %d: %s", page, url)
+            log.info("Ð¡Ñ‚Ñ€Ð°Ð½Ð¸Ñ†Ð° %d: %s", page, url)
             html = self.fetcher.fetch(url)
             if html is None:
-                log.error("Не удалось загрузить страницу %d — останавливаюсь", page)
+                log.error("ÐÐµ ÑƒÐ´Ð°Ð»Ð¾ÑÑŒ Ð·Ð°Ð³Ñ€ÑƒÐ·Ð¸Ñ‚ÑŒ ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ñƒ %d â€” Ð¾ÑÑ‚Ð°Ð½Ð°Ð²Ð»Ð¸Ð²Ð°ÑŽÑÑŒ", page)
                 break
 
             listings = [l for l in self.parser.parse(html) if l.external_id not in seen]
             if not listings:
                 if page == 1:
                     self._diagnose(html)
-                log.info("Новых объявлений на странице нет — конец выдачи")
+                log.info("ÐÐ¾Ð²Ñ‹Ñ… Ð¾Ð±ÑŠÑÐ²Ð»ÐµÐ½Ð¸Ð¹ Ð½Ð° ÑÑ‚Ñ€Ð°Ð½Ð¸Ñ†Ðµ Ð½ÐµÑ‚ â€” ÐºÐ¾Ð½ÐµÑ† Ð²Ñ‹Ð´Ð°Ñ‡Ð¸")
                 break
 
             listings = listings[: self.max_listings - collected]
             seen.update(l.external_id for l in listings)
             collected += len(listings)
             new_total += self.repo.save_many(listings)
-            log.info("Собрано %d / %d", collected, self.max_listings)
+            log.info("Ð¡Ð¾Ð±Ñ€Ð°Ð½Ð¾ %d / %d", collected, self.max_listings)
 
             if collected >= self.max_listings:
                 break
 
-        log.info("Готово: собрано %d, новых в БД: %d, всего в БД: %d",
+        log.info("Ð“Ð¾Ñ‚Ð¾Ð²Ð¾: ÑÐ¾Ð±Ñ€Ð°Ð½Ð¾ %d, Ð½Ð¾Ð²Ñ‹Ñ… Ð² Ð‘Ð”: %d, Ð²ÑÐµÐ³Ð¾ Ð² Ð‘Ð”: %d",
                  collected, new_total, self.repo.count())
         return collected

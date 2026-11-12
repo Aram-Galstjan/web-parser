@@ -8,14 +8,14 @@ from typing import Optional
 
 @dataclass
 class Listing:
-    """Одно объявление о недвижимости"""
+    """A single real-estate listing."""
 
-    external_id: str 
+    external_id: str
     title: str
-    price: str  
+    price: str
     address: str
     url: str
-    price_eur: Optional[int] = None  
+    price_eur: Optional[int] = None
     scraped_at: str = field(
         default_factory=lambda: datetime.now(timezone.utc).isoformat(timespec="seconds")
     )

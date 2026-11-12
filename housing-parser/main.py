@@ -33,8 +33,8 @@ def main() -> int:
 
     ap = argparse.ArgumentParser(description="Kleinanzeigen Berlin apartments parser")
     ap.add_argument("--limit", type=int, default=cfg["max_listings"],
-                    help="сколько объявлений собрать (по умолчанию из config.json)")
-    ap.add_argument("--no-proxy", action="store_true", help="работать без прокси")
+                    help="how many listings to collect (default: from config.json)")
+    ap.add_argument("--no-proxy", action="store_true", help="run without proxy")
     args = ap.parse_args()
 
     setup_logging(os.getenv("LOG_LEVEL", "INFO"))

@@ -9,29 +9,29 @@ from models import Listing
 class IProxyProvider(ABC):
     @abstractmethod
     def get(self) -> Optional[dict]:
-        """Вернуть proxies-dict для requests или None (без прокси)."""
+        """Return a proxy dict for requests or None (without proxy)."""
 
     @abstractmethod
     def mark_bad(self, proxy: Optional[dict]) -> None:
-        """Пометить прокси как нерабочий."""
+        """Mark a proxy as unusable."""
 
 
 class IFetcher(ABC):
     @abstractmethod
     def fetch(self, url: str) -> Optional[str]:
-        """Скачать страницу и вернуть HTML (или None при неудаче)."""
+        """Download a page and return HTML (or None on failure)."""
 
 
 class IParser(ABC):
     @abstractmethod
     def parse(self, html: str) -> list[Listing]:
-        """Извлечь объявления из HTML страницы выдачи."""
+        """Extract listings from the search results HTML."""
 
 
 class IListingRepository(ABC):
     @abstractmethod
     def save_many(self, listings: Iterable[Listing]) -> int:
-        """Сохранить объявления (upsert), вернуть число новых."""
+        """Save listings (upsert) and return the number of new ones."""
 
     @abstractmethod
     def count(self) -> int:
